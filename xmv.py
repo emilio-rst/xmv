@@ -39,12 +39,12 @@ import glob
 import shutil
 import argparse
 
-def move(source, pattern, destiny, overwrite=False, suffix=False, verbose=False):
+def move(source, pattern, replacement, overwrite=False, suffix=False, verbose=False):
 	"""Mover archivos que coincidan con el patron utilizando sustitución con expresión regular re.sub"""
 	
 	for file_path in glob.iglob(source):
 		filename = os.path.basename(file_path)
-		destination = re.sub(pattern, destiny, filename)
+		destination = re.sub(pattern, replacement, filename)
 		 
 		# Si se ha realizado sustitucion
 		if filename != destination:
@@ -95,7 +95,7 @@ def main():
 	# Definiendo argumentos
 	parser = argparse.ArgumentParser(description='Mueve los archivos que encajen con el patrón a la ruta apuntada por la cadena de remplazo')
 	parser.add_argument("pattern", help="Patrón con el que debe coincidir, es una expresión regular de python")
-	parser.add_argument("destiny", help="Cadena de remplazo valida de expresiones regulares de python utilizada como destino", nargs="?", default="")
+	parser.add_argument("replacement", help="Cadena de remplazo valida de expresiones regulares de python utilizada como destino", nargs="?", default="")
 	parser.add_argument("source", help="Path fuente (corresponde una expresión regular path de UNIX)", nargs="?", default="*")
 	
 	group = parser.add_mutually_exclusive_group()
@@ -106,7 +106,7 @@ def main():
 	args = parser.parse_args()
 	
 	# Mover archivos
-	move(args.source, args.pattern, args.destiny, args.overwrite, args.suffix, args.verbose)
+	move(args.source, args.pattern, args.replacement, args.overwrite, args.suffix, args.verbose)
 	return 0 
 		 
 		 
