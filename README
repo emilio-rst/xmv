@@ -1,0 +1,12 @@
+xmv.py
+
+Mover archivos utilizando expresiones regulares
+
+Mueve archivos utilizando sustitución con expresiones regulares re.sub
+
+Ejemplos: 
+* Eliminando prefijo en archivos del directorio de trabajo actual
+	xmv "^\[hd_reactor\]_*"
+
+* Moviendo canciones en formato mp3 de la agrupacion musical HIM a una carpeta llamada HIM
+	xmv "^HIM-(.+)$" "HIM/\1" "*.mp3"
