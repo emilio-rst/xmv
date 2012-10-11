@@ -14,6 +14,12 @@
 #		* Moviendo canciones en formato mp3 de la agrupacion musical HIM a una carpeta llamada HIM
 #			 xmv "^HIM-(.+)$" "HIM/\1" "*.mp3"
 #
+#		* Moviendo archivos que coincidan con una expresion regular a un directorio
+#			xmv "^\[hd_reactor\]_*" "/home/emilio/\g<0>"
+#
+#		* Moviendo archivos que coincidan con una expresion regular a un directorio utilizando el modificador -d
+#			xmv "^\[hd_reactor\]_*" -d /home/emilio
+#
 #	   Copyright 2012 emilio <emilio.rst@gmail.com>
 #	   
 #	   This program is free software; you can redistribute it and/or modify
@@ -39,77 +45,154 @@ import glob
 import shutil
 import argparse
 
-def move(source, pattern, replacement, overwrite=False, suffix=False, verbose=False):
+
+class Move:
 	"""Mover archivos que coincidan con el patron utilizando sustitución con expresión regular re.sub"""
 	
-	for file_path in glob.iglob(source):
-		filename = os.path.basename(file_path)
-		destination = re.sub(pattern, replacement, filename)
-		 
-		# Si se ha realizado sustitucion
-		if filename != destination:
-			
-			# Si se forza sobrescribir 
-			if overwrite:
-				# Mover archivo
-				shutil.move(file_path, destination)
-				
-				if verbose:
-					print filename, "moved to", destination
-				
-			elif suffix: # Si se utiliza sufijo
-			
-				# Si ya existe, intenta generar siguiendo una secuencia
-				i = 0
-				base_destination = destination
-				while os.path.exists(destination):
-					i+=1
-					destination = re.sub("\.([^\.])*$", str(i) + "(\g<0>)", base_destination)
+	def __init__(self, pattern, replacement, overwrite, suffix, verbose, listener):
+		""" Constructor """
+		
+		self.pattern = pattern
+		self.replacement = replacement
+		self.overwrite = overwrite
+		self.suffix = suffix
+		self.verbose = verbose
+		self.listener = listener
+		
+	def apply(self, source):
+		"""Mueve los archivos"""
 
-				# Mover archivo
-				shutil.move(file_path, destination)
+		for file_path in glob.iglob(source):
+			filename = os.path.basename(file_path)
+			destination = re.sub(self.pattern, self.replacement, filename)
+			 
+			# Si se ha realizado sustitucion
+			if filename != destination:
 				
-				if verbose:
-					print filename, "moved to", destination
-				
-			elif os.path.exists(destination): # Con confirmacion
-				
-				confirm = raw_input("Overwrite %s (y/n): " % destination)
-				
-				if confirm == "y":
+				# Si se forza sobrescribir 
+				if self.overwrite:
 					# Mover archivo
 					shutil.move(file_path, destination)
 					
-					if verbose:
-						print filename, "moved to", destination
-	
-			else:
-				# Mover archivo
-				shutil.move(file_path, destination)
+					if self.verbose:
+						self.listener.notify_moved(filename, destination)
+					
+				elif self.suffix: # Si se utiliza sufijo
 				
-				if verbose:
-					print filename, "moved to", destination
+					# Si ya existe, intenta generar siguiendo una secuencia
+					i = 0
+					base_destination = destination
+					while os.path.exists(destination):
+						i+=1
+						destination = re.sub("\.([^\.])*$", str(i) + "(\g<0>)", base_destination)
+
+					# Mover archivo
+					shutil.move(file_path, destination)
+					
+					if self.verbose:
+						self.listener.notify_moved(filename, destination)
+					
+				elif os.path.exists(destination): # Con confirmacion
+					
+					confirm = self.listener.notify_confirm_overwrite(filename, destination)
+					
+					if confirm == "y":
+						# Mover archivo
+						shutil.move(file_path, destination)
+						
+						if self.verbose:
+							self.listener.notify_moved(filename, destination)
+		
+				else:
+					# Mover archivo
+					shutil.move(file_path, destination)
+					
+					if self.verbose:
+						self.listener.notify_moved(filename, destination)
+						
+						
+class Listener:
+	"""Oyente"""
+	
+	def __init__(self, view):
+		""" Constructor """
+		
+		self.view = view
+
+	def notify_confirm_overwrite(self, filename, destination):
+		""" Notificar confirmacion de sobrescritura """
+		
+		return self.view.confirm_overwrite(filename, destination)
+		
+		
+	def notify_moved(self, filename, destination):
+		""" Notificar archivo movido """
+
+		return self.view.display_moved(filename, destination)
+
+
+class View:
+	""" Vista de la aplicacion """
+
+	def __init__(self):
+		"""Constructor"""
+		
+		self.parser = argparse.ArgumentParser(description='Mueve los archivos que encajen con el patrón a la ruta apuntada por la cadena de remplazo')
+		self.parser.add_argument("pattern", help="Patrón con el que debe coincidir, es una expresión regular de python")
+		self.parser.add_argument("replacement", help="Cadena de remplazo valida de expresiones regulares de python utilizada como destino", nargs="?", default="")
+		self.parser.add_argument("source", help="Path fuente (corresponde una expresión regular path de UNIX)", nargs="?", default="*")
+		
+		group = self.parser.add_mutually_exclusive_group()
+		group.add_argument("-o", "--overwrite", action="store_true", help="Sobrescribir archivos")
+		group.add_argument("-s", "--suffix", action="store_true", help="Usar sufijo numérico cuando exista el archivo")
+		
+		self.parser.add_argument("-d", "--directory", help="Indicar directorio de destino")
+		self.parser.add_argument("-v", "--verbose", action="store_true", help="Mostrar lista de archivos movidos")
+		
+		
+	def get_args(self):
+		"""Obtiene los argumentos"""
+
+		return self.parser.parse_args()
+		
+		
+	def get_listener(self):
+		""" Obtener oyente """
+		
+		return Listener(self)
+	
+	
+	def confirm_overwrite(self, filename, destination):
+		""" Confirmar sobrescritura """
+		
+		return raw_input("self.overwrite %s (y/n): " % destination)
+
+
+	def display_moved(self, filename, destination):
+		""" Mostrar archivo movido """
+		
+		print filename, "moved to", destination
 		
 
-def main():
-	# Definiendo argumentos
-	parser = argparse.ArgumentParser(description='Mueve los archivos que encajen con el patrón a la ruta apuntada por la cadena de remplazo')
-	parser.add_argument("pattern", help="Patrón con el que debe coincidir, es una expresión regular de python")
-	parser.add_argument("replacement", help="Cadena de remplazo valida de expresiones regulares de python utilizada como destino", nargs="?", default="")
-	parser.add_argument("source", help="Path fuente (corresponde una expresión regular path de UNIX)", nargs="?", default="*")
-	
-	group = parser.add_mutually_exclusive_group()
-	group.add_argument("-o", "--overwrite", action="store_true", help="Sobrescribir archivos")
-	group.add_argument("-s", "--suffix", action="store_true", help="Usar sufijo numérico cuando exista el archivo")
-	
-	parser.add_argument("-v", "--verbose", action="store_true", help="Mostrar lista de archivos movidos")
-	args = parser.parse_args()
-	
-	# Mover archivos
-	move(args.source, args.pattern, args.replacement, args.overwrite, args.suffix, args.verbose)
-	return 0 
+class Controller:
+	"""Controlador"""
+
+	def main(self):
+		view = View()
+		args = view.get_args()
+		
+		# Si se ha indicado el modificador directory
+		if args.directory is None:
+			# Mover archivos
+			Move(args.pattern, args.replacement, args.overwrite, args.suffix, args.verbose, view.get_listener()).apply(args.source)
+		else:
+			# Mover archivos a directorio
+			#move_to_directory(args.source, args.pattern, args.directory, args.overwrite, args.suffix, args.verbose)
+			pass
+
+		return 0 
 		 
 		 
 if __name__ == '__main__':
-	main()
+	Controller().main()
 
