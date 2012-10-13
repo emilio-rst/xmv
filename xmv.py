@@ -109,8 +109,8 @@ class Move:
 					
 					if self.verbose:
 						self.listener.notify_moved(filename, destination)
-						
-						
+		
+					
 class Listener:
 	"""Oyente"""
 	
@@ -165,9 +165,12 @@ class View:
 	def confirm_overwrite(self, filename, destination):
 		""" Confirmar sobrescritura """
 		
-		return raw_input("self.overwrite %s (y/n): " % destination)
-
-
+		while True:
+			value = raw_input("Overwrite %s (y/n): " % destination)
+			if value in ['y', 'n']:
+				return value
+		
+	
 	def display_moved(self, filename, destination):
 		""" Mostrar archivo movido """
 		
@@ -180,16 +183,7 @@ class Controller:
 	def main(self):
 		view = View()
 		args = view.get_args()
-		
-		# Si se ha indicado el modificador directory
-		if args.directory is None:
-			# Mover archivos
-			Move(args.pattern, args.replacement, args.overwrite, args.suffix, args.verbose, view.get_listener()).apply(args.source)
-		else:
-			# Mover archivos a directorio
-			#move_to_directory(args.source, args.pattern, args.directory, args.overwrite, args.suffix, args.verbose)
-			pass
-
+		Move(args.pattern, args.replacement, args.overwrite, args.suffix, args.verbose, view.get_listener()).apply(args.source)
 		return 0 
 		 
 		 
