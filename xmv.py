@@ -15,10 +15,10 @@
 #			 xmv "^HIM-(.+)$" "HIM/\1" "*.mp3"
 #
 #		* Moviendo archivos que coincidan con una expresion regular a un directorio
-#			xmv "^\[hd_reactor\]_*" "/home/emilio/\g<0>"
+#			xmv "^\[hd_reactor\].*$" "/home/emilio/\g<0>"
 #
 #		* Moviendo archivos que coincidan con una expresion regular a un directorio utilizando el modificador -d
-#			xmv "^\[hd_reactor\]_*" -d /home/emilio
+#			xmv "^\[hd_reactor\]" -d /home/emilio
 #
 #	   Copyright 2012 emilio <emilio.rst@gmail.com>
 #	   
@@ -47,69 +47,117 @@ import argparse
 
 
 class Move:
-	"""Mover archivos que coincidan con el patron utilizando sustitución con expresión regular re.sub"""
+	"""Mover archivo a destino"""
 	
-	def __init__(self, pattern, replacement, overwrite, suffix, verbose, listener):
+	def __init__(self, overwrite, suffix, verbose, listener):
 		""" Constructor """
 		
-		self.pattern = pattern
-		self.replacement = replacement
 		self.overwrite = overwrite
 		self.suffix = suffix
 		self.verbose = verbose
 		self.listener = listener
+		
+	def apply(self, source, destination):
+		"""Mueve los archivos"""
+
+		filename = os.path.basename(source)
+
+		# Si se forza sobrescribir 
+		if self.overwrite:
+			# Mover archivo
+			shutil.move(source, destination)
+			
+			if self.verbose:
+				self.listener.notify_moved(filename, destination)
+			
+		elif self.suffix: # Si se utiliza sufijo
+		
+			# Si ya existe, intenta generar siguiendo una secuencia
+			i = 0
+			base_destination = destination
+			while os.path.exists(destination):
+				i+=1
+				destination = re.sub("\.([^\.])*$", str(i) + "(\g<0>)", base_destination)
+
+			# Mover archivo
+			shutil.move(source, destination)
+			
+			if self.verbose:
+				self.listener.notify_moved(filename, destination)
+			
+		elif os.path.exists(destination): # Con confirmacion
+			
+			confirm = self.listener.notify_confirm_overwrite(filename, destination)
+			
+			if confirm == "y":
+				# Mover archivo
+				shutil.move(source, destination)
+				
+				if self.verbose:
+					self.listener.notify_moved(filename, destination)
+
+		else:
+			# Mover archivo
+			shutil.move(source, destination)
+			
+			if self.verbose:
+				self.listener.notify_moved(filename, destination)
+
+
+class MoveRegExp:
+	"""Mover archivos que coincidan con el patron utilizando sustitución con expresión regular re.sub"""
+	
+	def __init__(self, pattern, replacement, ignore_case, overwrite, suffix, verbose, listener):
+		""" Constructor """
+		
+		self.pattern = pattern
+		self.replacement = replacement
+		self.ignore_case = ignore_case
+		self.move = Move(overwrite, suffix, verbose, listener)
 		
 	def apply(self, source):
 		"""Mueve los archivos"""
 
 		for file_path in glob.iglob(source):
 			filename = os.path.basename(file_path)
-			destination = re.sub(self.pattern, self.replacement, filename)
+			
+			if self.ignore_case:
+				destination = re.sub(self.pattern, self.replacement, filename, flags=re.IGNORECASE)
+			else:
+				destination = re.sub(self.pattern, self.replacement, filename)
 			 
 			# Si se ha realizado sustitucion
 			if filename != destination:
-				
-				# Si se forza sobrescribir 
-				if self.overwrite:
-					# Mover archivo
-					shutil.move(file_path, destination)
-					
-					if self.verbose:
-						self.listener.notify_moved(filename, destination)
-					
-				elif self.suffix: # Si se utiliza sufijo
-				
-					# Si ya existe, intenta generar siguiendo una secuencia
-					i = 0
-					base_destination = destination
-					while os.path.exists(destination):
-						i+=1
-						destination = re.sub("\.([^\.])*$", str(i) + "(\g<0>)", base_destination)
+				self.move.apply(file_path, destination)
+	
+	
+class MoveToDirectory:
+	"""Mover archivos que coincidan con el patron utilizando expresion regular a un directorio"""
+	
+	def __init__(self, pattern, directory, ignore_case, overwrite, suffix, verbose, listener):
+		""" Constructor """
+		
+		self.pattern = pattern
+		self.directory = directory
+		self.ignore_case = ignore_case
+		self.move = Move(overwrite, suffix, verbose, listener)
+		
+	def apply(self, source):
+		"""Mueve los archivos"""
 
-					# Mover archivo
-					shutil.move(file_path, destination)
-					
-					if self.verbose:
-						self.listener.notify_moved(filename, destination)
-					
-				elif os.path.exists(destination): # Con confirmacion
-					
-					confirm = self.listener.notify_confirm_overwrite(filename, destination)
-					
-					if confirm == "y":
-						# Mover archivo
-						shutil.move(file_path, destination)
-						
-						if self.verbose:
-							self.listener.notify_moved(filename, destination)
-		
-				else:
-					# Mover archivo
-					shutil.move(file_path, destination)
-					
-					if self.verbose:
-						self.listener.notify_moved(filename, destination)
-		
+		for file_path in glob.iglob(source):
+			filename = os.path.basename(file_path)
+			
+			if self.ignore_case:
+				result = re.search(self.pattern, filename, flags=re.IGNORECASE)
+			else:
+				result = re.search(self.pattern, filename)
+			 
+			# Si se ha realizado sustitucion
+			if result is not None:
+				destination = os.path.join(self.directory, filename)
+				self.move.apply(file_path, destination)
+							
 					
 class Listener:
 	"""Oyente"""
@@ -146,7 +194,8 @@ class View:
 		group.add_argument("-o", "--overwrite", action="store_true", help="Sobrescribir archivos")
 		group.add_argument("-s", "--suffix", action="store_true", help="Usar sufijo numérico cuando exista el archivo")
 		
-		self.parser.add_argument("-d", "--directory", help="Indicar directorio de destino")
+		self.parser.add_argument("-i", "--ignore-case",action="store_true", help="Ignorar mayúsculas")
+		self.parser.add_argument("-d", "--directory", help="Directorio de destino")
 		self.parser.add_argument("-v", "--verbose", action="store_true", help="Mostrar lista de archivos movidos")
 		
 		
@@ -183,7 +232,13 @@ class Controller:
 	def main(self):
 		view = View()
 		args = view.get_args()
-		Move(args.pattern, args.replacement, args.overwrite, args.suffix, args.verbose, view.get_listener()).apply(args.source)
+		
+		if args.directory is None:
+			move = MoveRegExp(args.pattern, args.replacement, args.ignore_case, args.overwrite, args.suffix, args.verbose, view.get_listener())
+		else:
+			move = MoveToDirectory(args.pattern, args.directory, args.ignore_case, args.overwrite, args.suffix, args.verbose, view.get_listener())
+			
+		move.apply(args.source)
 		return 0 
 		 
 		 
