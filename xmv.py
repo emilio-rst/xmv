@@ -153,7 +153,7 @@ class MoveToDirectory:
 			else:
 				result = re.search(self.pattern, filename)
 			 
-			# Si se ha realizado sustitucion
+			# Si hay coincidencia
 			if result is not None:
 				destination = os.path.join(self.directory, filename)
 				self.move.apply(file_path, destination)
