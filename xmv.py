@@ -9,16 +9,16 @@
 #
 #	   Ejemplos: 
 #		* Eliminando prefijo en archivos del directorio de trabajo actual
-#			 xmv "^\[hd_reactor\]_*"
+#			 xmv "^\[hdreactor.org\]_*"
 #		
 #		* Moviendo canciones en formato mp3 de la agrupacion musical HIM a una carpeta llamada HIM
 #			 xmv "^HIM-(.+)$" "HIM/\1" "*.mp3"
 #
 #		* Moviendo archivos que coincidan con una expresion regular a un directorio
-#			xmv "^\[hd_reactor\].*$" "/home/emilio/\g<0>"
+#			xmv "^\[hdreactor.org\].*$" "/home/emilio/\g<0>"
 #
 #		* Moviendo archivos que coincidan con una expresion regular a un directorio utilizando el modificador -d
-#			xmv "^\[hd_reactor\]" -d /home/emilio
+#			xmv "^\[hdreactor.org\]" -d /home/emilio
 #
 #	   Copyright 2012 emilio <emilio.rst@gmail.com>
 #	   
@@ -104,7 +104,7 @@ class Move:
 				self.listener.notify_moved(filename, destination)
 
 
-class MoveRegExp:
+class MoveSubstitution:
 	"""Mover archivos que coincidan con el patron utilizando sustitución con expresión regular re.sub"""
 	
 	def __init__(self, pattern, replacement, ignore_case, overwrite, suffix, verbose, listener):
@@ -125,7 +125,7 @@ class MoveRegExp:
 				destination = re.sub(self.pattern, self.replacement, filename, flags=re.IGNORECASE)
 			else:
 				destination = re.sub(self.pattern, self.replacement, filename)
-			 
+			
 			# Si se ha realizado sustitucion
 			if filename != destination:
 				self.move.apply(file_path, destination)
@@ -234,7 +234,7 @@ class Controller:
 		args = view.get_args()
 		
 		if args.directory is None:
-			move = MoveRegExp(args.pattern, args.replacement, args.ignore_case, args.overwrite, args.suffix, args.verbose, view.get_listener())
+			move = MoveSubstitution(args.pattern, args.replacement, args.ignore_case, args.overwrite, args.suffix, args.verbose, view.get_listener())
 		else:
 			move = MoveToDirectory(args.pattern, args.directory, args.ignore_case, args.overwrite, args.suffix, args.verbose, view.get_listener())
 			
