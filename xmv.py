@@ -201,7 +201,6 @@ class Controller:
 		view = View()
 		args = view.get_args()
 		
-		
 		move = MoveSubstitution(args.pattern, args.replacement, args.ignore_case, args.overwrite, args.suffix, args.verbose, view.get_listener())
 		move.apply(args.source)
 		return 0 
