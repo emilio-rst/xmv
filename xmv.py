@@ -9,7 +9,7 @@
 #
 #	   Ejemplos: 
 #		* Eliminando prefijo en archivos del directorio de trabajo actual
-#			 xmv "^\[hdreactor.org\]_*"
+#			 xmv "^\[hdreactor.org\]_*" ""
 #		
 #		* Moviendo canciones en formato mp3 de la agrupacion musical HIM a una carpeta llamada HIM
 #			 xmv "^HIM-(.+)$" "HIM/\1" "*.mp3"
@@ -17,8 +17,6 @@
 #		* Moviendo archivos que coincidan con una expresion regular a un directorio
 #			xmv "^\[hdreactor.org\].*$" "/home/emilio/\g<0>"
 #
-#		* Moviendo archivos que coincidan con una expresion regular a un directorio utilizando el modificador -d
-#			xmv "^\[hdreactor.org\]" -d /home/emilio
 #
 #	   Copyright 2012 emilio <emilio.rst@gmail.com>
 #	   
@@ -128,36 +126,7 @@ class MoveSubstitution:
 			
 			# Si se ha realizado sustitucion
 			if filename != destination:
-				self.move.apply(file_path, destination)
-	
-	
-class MoveToDirectory:
-	"""Mover archivos que coincidan con el patron utilizando expresion regular a un directorio"""
-	
-	def __init__(self, pattern, directory, ignore_case, overwrite, suffix, verbose, listener):
-		""" Constructor """
-		
-		self.pattern = pattern
-		self.directory = directory
-		self.ignore_case = ignore_case
-		self.move = Move(overwrite, suffix, verbose, listener)
-		
-	def apply(self, source):
-		"""Mueve los archivos"""
-
-		for file_path in glob.iglob(source):
-			filename = os.path.basename(file_path)
-			
-			if self.ignore_case:
-				result = re.search(self.pattern, filename, flags=re.IGNORECASE)
-			else:
-				result = re.search(self.pattern, filename)
-			 
-			# Si hay coincidencia
-			if result is not None:
-				destination = os.path.join(self.directory, filename)
-				self.move.apply(file_path, destination)
-							
+				self.move.apply(file_path, destination)		
 					
 class Listener:
 	"""Oyente"""
@@ -187,7 +156,7 @@ class View:
 		
 		self.parser = argparse.ArgumentParser(description='Mueve los archivos que encajen con el patrón a la ruta apuntada por la cadena de remplazo')
 		self.parser.add_argument("pattern", help="Patrón con el que debe coincidir, es una expresión regular de python")
-		self.parser.add_argument("replacement", help="Cadena de remplazo valida de expresiones regulares de python utilizada como destino", nargs="?", default="")
+		self.parser.add_argument("replacement", help="Cadena de remplazo valida de expresiones regulares de python utilizada como destino")
 		self.parser.add_argument("source", help="Path fuente (corresponde una expresión regular path de UNIX)", nargs="?", default="*")
 		
 		group = self.parser.add_mutually_exclusive_group()
@@ -195,7 +164,6 @@ class View:
 		group.add_argument("-s", "--suffix", action="store_true", help="Usar sufijo numérico cuando exista el archivo")
 		
 		self.parser.add_argument("-i", "--ignore-case",action="store_true", help="Ignorar mayúsculas")
-		self.parser.add_argument("-d", "--directory", help="Directorio de destino")
 		self.parser.add_argument("-v", "--verbose", action="store_true", help="Mostrar lista de archivos movidos")
 		
 		
@@ -233,11 +201,8 @@ class Controller:
 		view = View()
 		args = view.get_args()
 		
-		if args.directory is None:
-			move = MoveSubstitution(args.pattern, args.replacement, args.ignore_case, args.overwrite, args.suffix, args.verbose, view.get_listener())
-		else:
-			move = MoveToDirectory(args.pattern, args.directory, args.ignore_case, args.overwrite, args.suffix, args.verbose, view.get_listener())
-			
+		
+		move = MoveSubstitution(args.pattern, args.replacement, args.ignore_case, args.overwrite, args.suffix, args.verbose, view.get_listener())
 		move.apply(args.source)
 		return 0 
 		 
