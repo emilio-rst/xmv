@@ -5,8 +5,12 @@ Mover archivos utilizando expresiones regulares
 Mueve archivos utilizando sustitución con expresiones regulares re.sub
 
 Ejemplos: 
-* Eliminando prefijo en archivos del directorio de trabajo actual
-	xmv "^\[hd_reactor\]_*"
 
+* Eliminando prefijo en archivos del directorio de trabajo actual
+	xmv "^\[hdreactor.org\]_*" ""
+		
 * Moviendo canciones en formato mp3 de la agrupacion musical HIM a una carpeta llamada HIM
 	xmv "^HIM-(.+)$" "HIM/\1" "*.mp3"
+
+* Moviendo archivos que coincidan con una expresion regular a un directorio
+	xmv "^\[hdreactor.org\].*$" "/home/emilio/\g<0>"
